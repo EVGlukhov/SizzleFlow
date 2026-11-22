@@ -1,0 +1,18 @@
+{
+    "sourceFile": ".vscode/settings.json",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 0,
+            "patches": [
+                {
+                    "date": 1795377288234,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                }
+            ],
+            "date": 1795377288234,
+            "name": "Commit-0",
+            "content": "{\n  \"cSpell.language\": \"en,ru\",\n  \"cSpell.words\": [\"healthcheck\"],\n  \"editor.insertSpaces\": true,\n  \"editor.tabSize\": 2,\n  \"[typescript]\": {\n    \"editor.defaultFormatter\": \"esbenp.prettier-vscode\",\n    \"editor.formatOnSave\": true\n  }\n}\n"
+        }
+    ]
+}

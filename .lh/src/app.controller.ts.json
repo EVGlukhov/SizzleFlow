@@ -1,0 +1,26 @@
+{
+    "sourceFile": "src/app.controller.ts",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 2,
+            "patches": [
+                {
+                    "date": 1795377949293,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1795377963408,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -12,5 +12,7 @@\n   @Get()\n   getHello(): string {\n     return this.appService.getHello();\n   }\n+\n+  @Post('events')\n }\n"
+                },
+                {
+                    "date": 1795378074359,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -1,7 +1,10 @@\n-import { Controller, Get } from '@nestjs/common';\n+import { Body, Controller, Get, Post } from '@nestjs/common';\n import { AppService } from './app.service';\n-import { KafkaProducerService } from './kafka/kafka-producer.service';\n+import {\n+  KafkaProducerService,\n+  type OrderEvent,\n+} from './kafka/kafka-producer.service';\n \n @Controller()\n export class AppController {\n   constructor(\n@@ -14,5 +17,11 @@\n     return this.appService.getHello();\n   }\n \n   @Post('events')\n+  async publishEvent(\n+    @Body() event: OrderEvent,\n+  ): Promise<{ published: boolean; orderId: string }> {\n+    await this.kafkaProducer.publishOrderEvent(event);\n+    return { published: true, orderId: event.orderId };\n+  }\n }\n"
+                }
+            ],
+            "date": 1795377949293,
+            "name": "Commit-0",
+            "content": "import { Controller, Get } from '@nestjs/common';\nimport { AppService } from './app.service';\nimport { KafkaProducerService } from './kafka/kafka-producer.service';\n\n@Controller()\nexport class AppController {\n  constructor(\n    private readonly appService: AppService,\n    private readonly kafkaProducer: KafkaProducerService,\n  ) {}\n\n  @Get()\n  getHello(): string {\n    return this.appService.getHello();\n  }\n}\n"
+        }
+    ]
+}

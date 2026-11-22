@@ -1,0 +1,42 @@
+{
+    "sourceFile": "src/kafka/kafka-producer.service.ts",
+    "activeCommit": 0,
+    "commits": [
+        {
+            "activePatchIndex": 6,
+            "patches": [
+                {
+                    "date": 1795373892530,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n"
+                },
+                {
+                    "date": 1795373931555,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -11,7 +11,9 @@\n   private readonly producer: Producer;\n \n   constructor() {\n     const brokerList = process.env.KAFKA_BROKERS;\n-    i;\n+    if (!brokerList) {\n+      throw new Error('KAFKA_BROKERS must be configured');\n+    }\n   }\n }\n"
+                },
+                {
+                    "date": 1795377353676,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -14,6 +14,11 @@\n     const brokerList = process.env.KAFKA_BROKERS;\n     if (!brokerList) {\n       throw new Error('KAFKA_BROKERS must be configured');\n     }\n+\n+    const brokers = brokerList\n+      .split(',')\n+      .map((broker) => broker.trim())\n+      .filter(Boolean);\n   }\n }\n"
+                },
+                {
+                    "date": 1795377409405,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -19,6 +19,10 @@\n     const brokers = brokerList\n       .split(',')\n       .map((broker) => broker.trim())\n       .filter(Boolean);\n+\n+    if (brokers.length === 0) {\n+      throw new Error('KAFKA_BROKERS must contain at least one broker');\n+    }\n   }\n }\n"
+                },
+                {
+                    "date": 1795377491215,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -23,6 +23,17 @@\n \n     if (brokers.length === 0) {\n       throw new Error('KAFKA_BROKERS must contain at least one broker');\n     }\n+\n+    const kafka = new Kafka({\n+      clientId: 'sf-api',\n+      brokers,\n+    });\n+\n+    this.producer = kafka.producer();\n   }\n+\n+  async onModuleInit(): Promise<void> {\n+    await this.producer.connect();\n+  }\n }\n"
+                },
+                {
+                    "date": 1795377542257,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -35,5 +35,9 @@\n \n   async onModuleInit(): Promise<void> {\n     await this.producer.connect();\n   }\n+\n+  async onModuleDestroy(): Promise<void> {\n+    await this.producer.disconnect();\n+  }\n }\n"
+                },
+                {
+                    "date": 1795377640779,
+                    "content": "Index: \n===================================================================\n--- \n+++ \n@@ -39,5 +39,17 @@\n \n   async onModuleDestroy(): Promise<void> {\n     await this.producer.disconnect();\n   }\n+\n+  async publishOrderEvent(event: OrderEvent): Promise<void> {\n+    await this.producer.send({\n+      topic: 'sf.order-events',\n+      messages: [\n+        {\n+          key: event.orderId,\n+          value: JSON.stringify(event),\n+        },\n+      ],\n+    });\n+  }\n }\n"
+                }
+            ],
+            "date": 1795373892530,
+            "name": "Commit-0",
+            "content": "import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';\nimport { Kafka, type Producer } from 'kafkajs';\n\nexport interface OrderEvent {\n  eventType: string;\n  orderId: string;\n}\n\n@Injectable()\nexport class KafkaProducerService implements OnModuleInit, OnModuleDestroy {\n  private readonly producer: Producer;\n\n  constructor() {\n    const brokerList = process.env.KAFKA_BROKERS;\n    i;\n  }\n}\n"
+        }
+    ]
+}

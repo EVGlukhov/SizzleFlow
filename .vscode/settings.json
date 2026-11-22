@@ -1,6 +1,10 @@
 {
-    "cSpell.language": "en,ru",
-    "cSpell.words": [
-        "healthcheck"
-    ]
+  "cSpell.language": "en,ru",
+  "cSpell.words": ["healthcheck"],
+  "editor.insertSpaces": true,
+  "editor.tabSize": 2,
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.formatOnSave": true
+  }
 }
