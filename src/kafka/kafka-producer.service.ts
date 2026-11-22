@@ -1,35 +1,13 @@
 import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { Kafka, type Producer } from 'kafkajs';
-
-export interface OrderEvent {
-  eventType: string;
-  orderId: string;
-}
-
+import { type Producer } from 'kafkajs';
+import type { OrderEvent } from './order-event';
+import { createKafkaClient } from './kafka-client';
 @Injectable()
 export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   private readonly producer: Producer;
 
   constructor() {
-    const brokerList = process.env.KAFKA_BROKERS;
-    if (!brokerList) {
-      throw new Error('KAFKA_BROKERS must be configured');
-    }
-
-    const brokers = brokerList
-      .split(',')
-      .map((broker) => broker.trim())
-      .filter(Boolean);
-
-    if (brokers.length === 0) {
-      throw new Error('KAFKA_BROKERS must contain at least one broker');
-    }
-
-    const kafka = new Kafka({
-      clientId: 'sf-api',
-      brokers,
-    });
-
+    const kafka = createKafkaClient('sf-api');
     this.producer = kafka.producer();
   }
 

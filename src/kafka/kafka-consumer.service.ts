@@ -4,7 +4,9 @@ import {
   OnModuleDestroy,
   OnModuleInit,
 } from '@nestjs/common';
-import { Consumer, Kafka } from 'kafkajs';
+import { Consumer } from 'kafkajs';
+import { isOrderEvent } from './order-event';
+import { createKafkaClient } from './kafka-client';
 
 @Injectable()
 export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
@@ -12,21 +14,7 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly consumer: Consumer;
 
   constructor() {
-    const brokerList = process.env.KAFKA_BROKERS;
-    if (!brokerList) {
-      throw new Error('KAFKA_BROKERS must be configured');
-    }
-
-    const brokers = brokerList
-      .split(',')
-      .map((broker) => broker.trim())
-      .filter(Boolean);
-
-    if (brokers.length === 0) {
-      throw new Error('KAFKA_BROKERS must contain at least one broker');
-    }
-
-    const kafka = new Kafka({ clientId: 'sf-kitchen', brokers });
+    const kafka = createKafkaClient('sf-kitchen');
     this.consumer = kafka.consumer({ groupId: 'sf-kitchen' });
   }
 
@@ -39,9 +27,21 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
 
     await this.consumer.run({
       eachMessage: async ({ topic, partition, message }) => {
-        this.logger.log(
-          `${topic}[${partition}] offset=${message.offset} key=${message.key?.toString() ?? 'null'} value=${message.value?.toString() ?? 'null'}`,
-        );
+        const rawValue = message.value?.toString();
+
+        if (rawValue === undefined) {
+          throw new Error(
+            `Missing event value at ${topic}[${partition}] offset=${message.offset}`,
+          );
+        }
+
+        const event: unknown = JSON.parse(rawValue);
+
+        if (!isOrderEvent(event)) {
+          throw new Error(
+            `Invalid order event at ${topic}[${partition}] offset=${message.offset}`,
+          );
+        }
       },
     });
   }

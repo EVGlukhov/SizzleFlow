@@ -1,9 +1,7 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { AppService } from './app.service';
-import {
-  KafkaProducerService,
-  type OrderEvent,
-} from './kafka/kafka-producer.service';
+import { KafkaProducerService } from './kafka/kafka-producer.service';
+import type { OrderEvent } from './kafka/order-event';
 
 @Controller()
 export class AppController {
