@@ -1,0 +1,75 @@
+services: # Контейнеры, которые Docker Compose будет запускать
+
+  kafka: # Брокер Kafka для локального изучения
+    image: apache/kafka:4.0.0 # Фиксированная версия официального образа Kafka
+    hostname: kafka # Имя контейнера внутри Docker-сети
+    ports: # Публикуемые порты: компьютер снаружи → контейнер
+      - "9092:9092" # Подключение к Kafka из приложения, запущенного на компьютере
+    environment: # Настройки брокера Kafka
+      KAFKA_NODE_ID: 1 # Уникальный идентификатор этого узла Kafka
+      KAFKA_PROCESS_ROLES: broker,controller # Узел хранит сообщения и управляет кластером
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093,INTERNAL://:29092 # Адреса, на которых Kafka принимает подключения
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://localhost:9092,INTERNAL://kafka:29092 # Адреса Kafka, которые она сообщает клиентам
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,INTERNAL:PLAINTEXT # Для локальной разработки подключения без TLS и SASL
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER # Имя listener для связи контроллеров KRaft
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL # Listener для общения между брокерами
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093 # В этом учебном кластере один узел-контроллер
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1 # Репликация служебного топика offsets на одном брокере
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1 # Репликация журнала транзакций на одном брокере
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1 # Минимум синхронных реплик для работы транзакций в кластере из одного брокера
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0 # Убирает начальную задержку перед балансировкой consumer group
+      KAFKA_NUM_PARTITIONS: 3 # Число partitions по умолчанию для создаваемых топиков
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false" # Отключает автоматическое создание топиков: создадим их явно
+      KAFKA_LOG_DIRS: /tmp/kraft-combined-logs # Каталог хранения данных Kafka внутри контейнера
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk # Постоянный ID KRaft-кластера; не меняй при сохраненных данных    
+    healthcheck: # Проверка готовности Kafka принимать запросы
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1"] # Проверяет доступность брокера через Kafka CLI
+      interval: 10s # Запускать проверку каждые 10 секунд
+      timeout: 10s # Считать проверку неудачной, если она длится дольше 10 секунд
+      retries: 5 # Повторить проверку до признания контейнера нездоровым
+      start_period: 20s # Дать Kafka время на первоначальный запуск
+  
+  kafka-ui: # Веб-интерфейс для просмотра топиков и сообщений Kafka
+    image: provectuslabs/kafka-ui:v0.7.2 # Фиксированная версия Kafka UI
+    ports: # Публикуемый порт веб-интерфейса
+      - "8080:8080" # Открывает UI на компьютере по адресу localhost:8080
+    environment: # Настройки подключения Kafka UI к брокеру
+      KAFKA_CLUSTERS_0_NAME: local # Отображаемое имя кластера
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:29092 # Внутренний адрес Kafka в Docker-сети
+    depends_on: # Порядок запуска зависимых сервисов
+      kafka: # Kafka UI зависит от брокера Kafka
+        condition: service_healthy # Запускать UI после успешной проверки Kafka
+
+  postgres: # База данных для состояния заказов
+    image: postgres:16-alpine # Фиксированная версия PostgreSQL на компактном Alpine Linux
+    ports: # Публикуемый порт базы данных
+      - "5432:5432" # Подключение к PostgreSQL с компьютера через localhost:5432
+    environment: # Настройки начальной базы и пользователя
+      POSTGRES_DB: sizzleflow # Имя базы, которую PostgreSQL создаст при первом запуске
+      POSTGRES_USER: sizzleflow # Имя пользователя базы
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env} # Пароль берется из локального .env, а не хранится в compose
+    volumes: # Постоянное хранилище PostgreSQL
+      - postgres_data:/var/lib/postgresql/data # Сохраняет базу при пересоздании контейнера
+    healthcheck: # Проверка готовности PostgreSQL принимать подключения
+      test: ["CMD-SHELL", "pg_isready -U sizzleflow -d sizzleflow"] # Проверяет соединение с указанной базой
+      interval: 10s # Запускать проверку каждые 10 секунд
+      timeout: 5s # Считать проверку неудачной, если она длится дольше 5 секунд
+      retries: 5 # Повторить проверку до признания контейнера нездоровым
+
+  api: # NestJS backend
+    build: # Собирает локальный Docker-образ приложения
+      context: . # Использует корень проекта как build context
+      dockerfile: Dockerfile # Берет инструкции из Dockerfile в корне
+    ports: # Публикует порт приложения
+      - "3000:3000" # Открывает NestJS на localhost:3000
+    environment: # Переменные окружения приложения
+      NODE_ENV: development # Включает режим разработки
+      PORT: 3000 # Порт, на котором NestJS принимает запросы
+    volumes: # Настраивает доступ контейнера к файлам
+      - .:/app # Показывает контейнеру изменения файлов проекта
+      - /app/node_modules # Оставляет Linux-зависимости контейнера отдельно от файлов Mac
+    command: npm run start:dev # Следит за файлами, пересобирает и перезапускает NestJS
+
+volumes: # Именованные хранилища Docker, переживающие перезапуск контейнеров
+  kafka_data: # Хранилище сообщений и метаданных Kafka
+  postgres_data: # Хранилище данных PostgreSQL
