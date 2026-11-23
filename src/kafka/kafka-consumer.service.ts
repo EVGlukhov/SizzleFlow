@@ -49,25 +49,37 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
         const eventId =
           event.eventId ?? `legacy:${topic}:${partition}:${message.offset}`;
 
-        const isNewEvent = await this.prisma.$transaction(async (tx) => {
-          const result = await tx.processedEvent.createMany({
-            data: [
-              {
-                eventId,
-                orderId: event.orderId,
-                eventType: event.eventType,
-              },
-            ],
-            skipDuplicates: true,
-          });
+        const shouldLogKitchenStart = await this.prisma.$transaction(
+          async (tx) => {
+            const processed = await tx.processedEvent.createMany({
+              data: [
+                {
+                  eventId,
+                  orderId: event.orderId,
+                  eventType: event.eventType,
+                },
+              ],
+              skipDuplicates: true,
+            });
 
-          return result.count === 1;
-        });
+            if (processed.count === 0) {
+              return false;
+            }
 
-        if (
-          isNewEvent &&
-          event.eventType === ORDER_EVENT_TYPES.PAYMENT_CONFIRMED
-        ) {
+            if (event.eventType !== ORDER_EVENT_TYPES.PAYMENT_CONFIRMED) {
+              return false;
+            }
+
+            const ticket = await tx.kitchenTicket.createMany({
+              data: [{ orderId: event.orderId }],
+              skipDuplicates: true,
+            });
+
+            return ticket.count === 1;
+          },
+        );
+
+        if (shouldLogKitchenStart) {
           this.logger.log(`Kitchen starts preparing order ${event.orderId}`);
         }
 
