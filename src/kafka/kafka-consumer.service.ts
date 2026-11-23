@@ -7,6 +7,7 @@ import {
 import { Consumer } from 'kafkajs';
 import { isOrderEvent } from './order-event';
 import { createKafkaClient } from './kafka-client';
+import { KAFKA_TOPICS, ORDER_EVENT_TYPES } from './kafka.constants';
 
 @Injectable()
 export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
@@ -21,11 +22,12 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
   async onModuleInit(): Promise<void> {
     await this.consumer.connect();
     await this.consumer.subscribe({
-      topic: 'sf.order-events',
+      topic: KAFKA_TOPICS.ORDER_EVENTS,
       fromBeginning: true,
     });
 
     await this.consumer.run({
+      autoCommit: false,
       eachMessage: async ({ topic, partition, message }) => {
         const rawValue = message.value?.toString();
 
@@ -42,6 +44,18 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
             `Invalid order event at ${topic}[${partition}] offset=${message.offset}`,
           );
         }
+
+        if (event.eventType === ORDER_EVENT_TYPES.PAYMENT_CONFIRMED) {
+          this.logger.log(`Kitchen starts preparing order ${event.orderId}`);
+        }
+
+        await this.consumer.commitOffsets([
+          {
+            topic,
+            partition,
+            offset: (BigInt(message.offset) + 1n).toString(),
+          },
+        ]);
       },
     });
   }

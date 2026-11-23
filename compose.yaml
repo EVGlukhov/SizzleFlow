@@ -45,7 +45,7 @@ services: # Контейнеры, которые Docker Compose будет за�
   postgres: # База данных для состояния заказов
     image: postgres:16-alpine # Фиксированная версия PostgreSQL на компактном Alpine Linux
     ports: # Публикуемый порт базы данных
-      - 5432:5432 # Подключение к PostgreSQL с компьютера через localhost:5432
+      - 5433:5432 # Подключение к PostgreSQL с компьютера через localhost:5432
     environment: # Настройки начальной базы и пользователя
       POSTGRES_DB: sizzleflow # Имя базы, которую PostgreSQL создаст при первом запуске
       POSTGRES_USER: sizzleflow # Имя пользователя базы
@@ -68,6 +68,7 @@ services: # Контейнеры, которые Docker Compose будет за�
       NODE_ENV: development # Включает режим разработки
       PORT: 3000 # Порт, на котором NestJS принимает запросы
       KAFKA_BROKERS: kafka:29092 # Внутренний адрес Kafka для контейнера NestJS
+      DATABASE_URL: ${DATABASE_URL_DOCKER:?Set DATABASE_URL_DOCKER in .env}
     volumes: # Настраивает доступ контейнера к файлам
       - .:/app # Показывает контейнеру изменения файлов проекта
       - /app/node_modules # Оставляет Linux-зависимости контейнера отдельно от файлов Mac

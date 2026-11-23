@@ -1,7 +1,7 @@
-import { ORDER_EVENT_TYPES, OrderEventType } from './kafka.constants';
+import { ORDER_EVENT_TYPES, type OrderEventType } from './kafka.constants';
 
 export interface OrderEvent {
-  eventType: string;
+  eventType: OrderEventType;
   orderId: string;
 }
 
@@ -17,7 +17,7 @@ export function isOrderEvent(value: unknown): value is OrderEvent {
     typeof value === 'object' &&
     value !== null &&
     'eventType' in value &&
-    typeof value.eventType === 'string' &&
+    isOrderEventType(value.eventType) &&
     'orderId' in value &&
     typeof value.orderId === 'string'
   );

@@ -2,6 +2,7 @@ import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { type Producer } from 'kafkajs';
 import type { OrderEvent } from './order-event';
 import { createKafkaClient } from './kafka-client';
+import { KAFKA_TOPICS } from './kafka.constants';
 @Injectable()
 export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
   private readonly producer: Producer;
@@ -21,7 +22,7 @@ export class KafkaProducerService implements OnModuleInit, OnModuleDestroy {
 
   async publishOrderEvent(event: OrderEvent): Promise<void> {
     await this.producer.send({
-      topic: 'sf.order-events',
+      topic: KAFKA_TOPICS.ORDER_EVENTS,
       messages: [
         {
           key: event.orderId,
