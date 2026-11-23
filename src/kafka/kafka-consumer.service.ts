@@ -8,13 +8,14 @@ import { Consumer } from 'kafkajs';
 import { isOrderEvent } from './order-event';
 import { createKafkaClient } from './kafka-client';
 import { KAFKA_TOPICS, ORDER_EVENT_TYPES } from './kafka.constants';
+import { PrismaService } from '../prisma/prisma.service';
 
 @Injectable()
 export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(KafkaConsumerService.name);
   private readonly consumer: Consumer;
 
-  constructor() {
+  constructor(private readonly prisma: PrismaService) {
     const kafka = createKafkaClient('sf-kitchen');
     this.consumer = kafka.consumer({ groupId: 'sf-kitchen' });
   }
@@ -45,7 +46,28 @@ export class KafkaConsumerService implements OnModuleInit, OnModuleDestroy {
           );
         }
 
-        if (event.eventType === ORDER_EVENT_TYPES.PAYMENT_CONFIRMED) {
+        const eventId =
+          event.eventId ?? `legacy:${topic}:${partition}:${message.offset}`;
+
+        const isNewEvent = await this.prisma.$transaction(async (tx) => {
+          const result = await tx.processedEvent.createMany({
+            data: [
+              {
+                eventId,
+                orderId: event.orderId,
+                eventType: event.eventType,
+              },
+            ],
+            skipDuplicates: true,
+          });
+
+          return result.count === 1;
+        });
+
+        if (
+          isNewEvent &&
+          event.eventType === ORDER_EVENT_TYPES.PAYMENT_CONFIRMED
+        ) {
           this.logger.log(`Kitchen starts preparing order ${event.orderId}`);
         }
 

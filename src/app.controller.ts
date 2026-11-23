@@ -18,8 +18,8 @@ export class AppController {
   @Post('events')
   async publishEvent(
     @Body() event: OrderEvent,
-  ): Promise<{ published: boolean; orderId: string }> {
-    await this.kafkaProducer.publishOrderEvent(event);
-    return { published: true, orderId: event.orderId };
+  ): Promise<{ published: boolean; orderId: string; eventId: string }> {
+    const eventId = await this.kafkaProducer.publishOrderEvent(event);
+    return { published: true, orderId: event.orderId, eventId };
   }
 }
